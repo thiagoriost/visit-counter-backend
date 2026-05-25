@@ -42,6 +42,15 @@ function buildHttpsOptions() {
 app.use(cors()); // Permitir solicitudes desde cualquier origen
 app.use(express.json()); // Parsear el cuerpo de las solicitudes como JSON
 
+/**
+ * Registra metadatos seguros de la petición evitando estructuras circulares.
+ *
+ * @param {import('express').Request} req
+ */
+function logRequest(req) {
+    console.log(`[${req.method}] ${req.originalUrl} - ip: ${req.ip}`);
+}
+
 // Variables para el control de concurrencias
 let isWriting = false; // Indica si se está escribiendo en el archivo
 const writeQueue = []; // Cola de funciones de escritura pendientes
@@ -105,7 +114,7 @@ app.get('/api/visits', async (req, res) => {
     try {
         const data = await fs.promises.readFile(DATA_FILE, 'utf-8'); // Leer el archivo de visitas
         const visits = JSON.parse(data); // Parsear el contenido del archivo como JSON
-        console.log(JSON.stringify(req), JSON.stringify(res), data)
+        logRequest(req);
         res.json({
             success: true,
             count: visits.count
@@ -119,7 +128,7 @@ app.get('/api/visits', async (req, res) => {
 // Endpoint para incrementar el contador de visitas
 app.post('/api/visits/increment', async (req, res) => {
     try {
-        console.log(JSON.stringify(req), JSON.stringify(res))
+        logRequest(req);
         // Leer valor actual
         const data = await fs.promises.readFile(DATA_FILE, 'utf-8');
         const currentVisits = JSON.parse(data);
@@ -142,7 +151,7 @@ app.post('/api/visits/increment', async (req, res) => {
 
 // Endpoint para reiniciar contador (solo admin - opcional)
 app.post('/api/visits/reset', async (req, res) => {
-    console.log(JSON.stringify(req), JSON.stringify(res))
+    logRequest(req);
     // Verificar token secreto (seguridad básica)
     const secretToken = req.headers['admin-token'];
 
