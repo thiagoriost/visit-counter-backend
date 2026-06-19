@@ -1,0 +1,150 @@
+MANUAL DE DESPLIEGUE Y PUESTA EN MARCHA
+Visit Counter Backend
+
+1. Objetivo
+
+Este documento explica cómo instalar, configurar y poner en producción el backend del contador de visitas.
+La aplicación expone los mismos endpoints por HTTP y HTTPS usando Express.
+
+2. Requisitos previos
+
+- Node.js instalado en el servidor de producción.
+- Acceso al repositorio o al paquete desplegable de la aplicación.
+- Certificado TLS válido para el dominio o IP del servidor.
+- Puertos disponibles para HTTP y HTTPS.
+
+3. Estructura esperada
+
+La aplicación debe conservar, como mínimo, esta estructura:
+
+- server.js
+- package.json
+- .env
+- certs/
+- data/
+
+4. Instalación de dependencias
+
+Ubícate en la carpeta del proyecto y ejecuta:
+
+1. npm install
+
+Esto instalará las dependencias definidas en package.json.
+
+5. Configuración del archivo .env
+
+Configura las variables de entorno con valores acordes al entorno de producción.
+
+Ejemplo:
+
+PORT=3003
+HTTP_PORT=3002
+ADMIN_SECRET_TOKEN=tu-token-seguro
+SSL_KEY_PATH=./certs/localhost-key.pem
+SSL_CERT_PATH=./certs/localhost-cert.pem
+SSL_CA_PATH=
+
+Notas:
+
+- PORT corresponde al servidor HTTPS.
+- HTTP_PORT corresponde al servidor HTTP.
+- SSL_KEY_PATH debe apuntar a la clave privada.
+- SSL_CERT_PATH debe apuntar al certificado público.
+- SSL_CA_PATH es opcional y solo se usa si existe cadena CA/intermedia.
+
+6. Certificados TLS
+
+En producción no se recomienda usar certificados autofirmados.
+Debes generar o instalar un certificado emitido por una autoridad confiable.
+
+Ubica los archivos dentro de la carpeta certs/ y asegúrate de que las rutas coincidan con el .env.
+
+Ejemplo esperado:
+
+- certs/localhost-key.pem
+- certs/localhost-cert.pem
+
+Si usas un certificado emitido para un dominio real, actualiza los nombres y rutas en .env.
+
+7. Inicialización de datos
+
+La aplicación usa el archivo data/visits.json para almacenar el contador.
+
+Antes del primer arranque verifica:
+
+- Que la carpeta data/ exista.
+- Que el proceso tenga permisos de escritura en esa carpeta.
+
+Si el archivo visits.json no existe, la aplicación lo crea automáticamente con count en 0.
+
+8. Arranque de la aplicación
+
+En producción no se recomienda usar nodemon.
+Ejecuta directamente:
+
+1. node server.js
+
+La aplicación levantará:
+
+- HTTP en el puerto definido por HTTP_PORT.
+- HTTPS en el puerto definido por PORT.
+
+9. Verificación de funcionamiento
+
+Prueba los siguientes endpoints:
+
+- GET /api/health
+- GET /api/visits
+- POST /api/visits/increment
+- POST /api/visits/reset
+
+Ejemplos:
+
+- HTTP: http://localhost:3002/api/health
+- HTTPS: https://localhost:3003/api/health
+
+Si el servidor usa certificado autofirmado, el navegador puede mostrar una advertencia de seguridad.
+
+10. Prueba del contador
+
+Para validar el incremento del contador:
+
+1. Ejecuta GET /api/visits y toma nota del valor count.
+2. Ejecuta POST /api/visits/increment.
+3. Vuelve a ejecutar GET /api/visits.
+4. Verifica que count aumentó en 1.
+
+11. Reinicio del contador
+
+El endpoint /api/visits/reset requiere el encabezado:
+
+- admin-token: valor de ADMIN_SECRET_TOKEN
+
+Ejemplo de uso:
+
+POST /api/visits/reset
+Header: admin-token = tu-token-seguro
+
+12. Recomendaciones de producción
+
+- No uses nodemon en producción.
+- Usa un certificado válido y no autofirmado si el servicio estará expuesto públicamente.
+- Protege el valor de ADMIN_SECRET_TOKEN.
+- Asegura permisos de lectura sobre certs/ y escritura sobre data/.
+- Si vas a publicar el backend en Internet, abre únicamente los puertos necesarios en el firewall.
+
+13. Problemas frecuentes
+
+- Error de HTTPS: revisa que SSL_KEY_PATH y SSL_CERT_PATH apunten a archivos válidos.
+- Error de puerto ocupado: cambia PORT o HTTP_PORT.
+- Error 405 o parse error: revisa que estés usando HTTP en el puerto HTTP_PORT y HTTPS en el puerto PORT.
+- Error de permisos: confirma que el proceso puede leer certs/ y escribir data/.
+
+14. Resumen rápido
+
+1. Instala dependencias con npm install.
+2. Configura .env.
+3. Coloca los certificados en certs/.
+4. Verifica permisos de data/.
+5. Ejecuta node server.js.
+6. Prueba /api/health y /api/visits.
