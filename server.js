@@ -1,6 +1,7 @@
 require('dotenv').config(); // Cargar variables de entorno desde el archivo .env
 
-const PORT = process.env.PORT || 3001; // Puerto configurado en .env o por defecto 3001
+const PORT      = process.env.PORT      || 3003; // Puerto HTTPS configurado en .env o por defecto 3003
+const HTTP_PORT  = process.env.HTTP_PORT  || 3002; // Puerto HTTP configurado en .env o por defecto 3002
 const ADMIN_TOKEN = process.env.ADMIN_SECRET_TOKEN; // Token secreto para operaciones administrativas
 const SSL_KEY_PATH = process.env.SSL_KEY_PATH;
 const SSL_CERT_PATH = process.env.SSL_CERT_PATH;
@@ -8,6 +9,7 @@ const SSL_CA_PATH = process.env.SSL_CA_PATH;
 const express = require('express');
 const cors = require('cors');
 const fs = require('fs'); // Módulo de sistema de archivos para leer y escribir el archivo JSON
+const http  = require('http');
 const https = require('https');
 const path = require('path'); // Módulo para manejar rutas de archivos de manera segura
 
@@ -44,11 +46,12 @@ app.use(express.json()); // Parsear el cuerpo de las solicitudes como JSON
 
 /**
  * Registra metadatos seguros de la petición evitando estructuras circulares.
+ * Incluye el protocolo (http/https) para identificar el origen de la llamada.
  *
- * @param {import('express').Request} req
+ * @param {import('express').Request} req - Objeto de solicitud de Express.
  */
 function logRequest(req) {
-    console.log(`[${req.method}] ${req.originalUrl} - ip: ${req.ip}`);
+    console.log(`[${req.protocol.toUpperCase()}] [${req.method}] ${req.originalUrl} - ip: ${req.ip}`);
 }
 
 // Variables para el control de concurrencias
@@ -112,6 +115,7 @@ async function initializeDataFile(){
 // Endpoint para obtener el contador actual
 app.get('/api/visits', async (req, res) => {
     try {
+        // console.log("/api/visits accedido");
         const data = await fs.promises.readFile(DATA_FILE, 'utf-8'); // Leer el archivo de visitas
         const visits = JSON.parse(data); // Parsear el contenido del archivo como JSON
         logRequest(req);
@@ -128,6 +132,7 @@ app.get('/api/visits', async (req, res) => {
 // Endpoint para incrementar el contador de visitas
 app.post('/api/visits/increment', async (req, res) => {
     try {
+        // console.log("/api/visits/increment accedido");
         logRequest(req);
         // Leer valor actual
         const data = await fs.promises.readFile(DATA_FILE, 'utf-8');
@@ -180,19 +185,53 @@ app.get('/api/health', (req, res) => {
     });
 });
 
-// Iniciar servidor
+/**
+ * Inicia el servidor HTTP en el puerto HTTP_PORT.
+ * Comparte la misma aplicación Express que el servidor HTTPS,
+ * por lo que responde a los mismos endpoints.
+ *
+ * @param {number|string} port - Puerto en el que escucha el servidor HTTP.
+ * @returns {import('http').Server} Instancia del servidor HTTP.
+ */
+function startHttpServer(port) {
+    return http.createServer(app).listen(port, () => {
+        console.log(`Servidor HTTP  ejecutándose en el puerto ${port}`);
+    });
+}
+
+/**
+ * Inicia el servidor HTTPS en el puerto PORT.
+ * Si las variables SSL no están configuradas, lanza un error.
+ * Comparte la misma aplicación Express que el servidor HTTP.
+ *
+ * @param {number|string} port - Puerto en el que escucha el servidor HTTPS.
+ * @returns {import('https').Server} Instancia del servidor HTTPS.
+ */
+function startHttpsServer(port) {
+    const httpsOptions = buildHttpsOptions();
+    return https.createServer(httpsOptions, app).listen(port, () => {
+        console.log(`Servidor HTTPS ejecutándose en el puerto ${port}`);
+    });
+}
+
+/**
+ * Punto de entrada: inicializa el archivo de datos y levanta
+ * ambos servidores (HTTP y HTTPS) de forma concurrente.
+ * Los endpoints son idénticos independientemente del protocolo usado.
+ *
+ * @returns {Promise<void>}
+ */
 async function startServer() {
     await initializeDataFile();
-    const httpsOptions = buildHttpsOptions();
 
-    https.createServer(httpsOptions, app).listen(PORT, () => {
-        console.log(`Servidor HTTPS ejecutándose en el puerto ${PORT}`);
-        console.log(`📊 Endpoints disponibles:`);
-        console.log(`   - GET  /api/visits        (obtener contador)`);
-        console.log(`   - POST /api/visits/increment (incrementar)`);
-        console.log(`   - POST /api/visits/reset (reiniciar contador - solo admin)`);
-        console.log(`   - GET  /api/health       (verificar estado de la API)`);
-    });
+    startHttpServer(HTTP_PORT);
+    startHttpsServer(PORT);
+
+    console.log(`📊 Endpoints disponibles (HTTP puerto ${HTTP_PORT} / HTTPS puerto ${PORT}):`);
+    console.log(`   - GET  /api/visits           (obtener contador)`);
+    console.log(`   - POST /api/visits/increment  (incrementar)`);
+    console.log(`   - POST /api/visits/reset      (reiniciar contador - solo admin)`);
+    console.log(`   - GET  /api/health            (verificar estado de la API)`);
 }
 
 startServer();
