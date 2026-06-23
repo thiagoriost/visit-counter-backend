@@ -225,7 +225,7 @@ async function startServer() {
     await initializeDataFile();
 
     startHttpServer(HTTP_PORT);
-    startHttpsServer(PORT);
+    // startHttpsServer(PORT);
 
     console.log(`📊 Endpoints disponibles (HTTP puerto ${HTTP_PORT} / HTTPS puerto ${PORT}):`);
     console.log(`   - GET  /api/visits           (obtener contador)`);
