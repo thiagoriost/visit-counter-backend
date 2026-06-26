@@ -1,7 +1,7 @@
 require('dotenv').config(); // Cargar variables de entorno desde el archivo .env
 
 const PORT      = process.env.PORT      || 3003; // Puerto HTTPS configurado en .env o por defecto 3003
-const HTTP_PORT  = process.env.HTTP_PORT  || 3002; // Puerto HTTP configurado en .env o por defecto 3002
+const HTTP_PORT  = process.env.HTTP_PORT  || 8055; // Puerto HTTP configurado en .env o por defecto 8055
 const ADMIN_TOKEN = process.env.ADMIN_SECRET_TOKEN; // Token secreto para operaciones administrativas
 const SSL_KEY_PATH = process.env.SSL_KEY_PATH;
 const SSL_CERT_PATH = process.env.SSL_CERT_PATH;
